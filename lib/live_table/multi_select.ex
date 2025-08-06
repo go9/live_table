@@ -5,14 +5,11 @@ defmodule LiveTable.MultiSelect do
   This module provides functionality for creating and managing multi-select filters
   that work with string values, unlike the default Select filter which only works with IDs.
   
-  Supports two modes:
-  - Native select - Uses native HTML select with multiple attribute (default when tags: false)
-  - LiveSelect with tags - Uses LiveSelect component in tags mode for better UX (when tags: true)
+  Uses native HTML select element with optional multiple selection support.
   """
   
   use Phoenix.Component
   import Ecto.Query
-  import LiveSelect
   
   defstruct [:field, :key, :options]
   
@@ -20,13 +17,12 @@ defmodule LiveTable.MultiSelect do
     label: "",
     options: [],
     selected: [],
-    tags: false,  # Enable LiveSelect with tags mode
+    multiple: true,  # Enable multiple selection
+    size: 4,  # Number of visible options in select
     prompt: "Select options...",
-    placeholder: "Select options...",
     css_classes: "",
     label_classes: "block text-sm font-medium leading-6 text-gray-900 dark:text-gray-100 mb-2",
-    select_classes: "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500",
-    tag_class: "inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
+    select_classes: "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
   }
   
   @doc """
@@ -72,72 +68,40 @@ defmodule LiveTable.MultiSelect do
         {@filter.options.label}
       </label>
       
-      <%= if @filter.options.tags do %>
-        <.render_live_select filter={@filter} key={@key} />
-      <% else %>
-        <.render_native_select filter={@filter} key={@key} />
-      <% end %>
-    </div>
-    """
-  end
-  
-  defp render_live_select(assigns) do
-    # Create a form for LiveSelect
-    form = Phoenix.Component.to_form(%{@key => @filter.options.selected}, as: :filter)
-    assigns = assign(assigns, :form, form)
-    assigns = assign(assigns, :field, String.to_atom(@key))
-    
-    ~H"""
-    <div id={"multiselect_wrapper_#{@key}"}>
-      <.form for={@form} phx-change="multiselect_filter_change" phx-submit="multiselect_filter_change">
-        <input type="hidden" name="filter_key" value={@key} />
-        <.live_select
-          field={@form[@field]}
+      <form phx-change="sort">
+        <select
+          multiple={@filter.options.multiple}
           id={@key}
-          placeholder={@filter.options.placeholder || @filter.options.prompt}
-          mode={:tags}
-          value={@filter.options.selected}
-          options={@filter.options.options}
-          text_input_class={@filter.options.select_classes}
-          text_input_selected_class="bg-gray-50 dark:bg-gray-700"
-          dropdown_class="absolute z-50 mt-1 w-full rounded-md bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700"
-          option_class="relative px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-150"
-          selected_option_class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
-          active_option_class="bg-gray-100 dark:bg-gray-800"
-          tag_class={@filter.options.tag_class}
-        />
-      </.form>
-    </div>
-    """
-  end
-  
-  defp render_native_select(assigns) do
-    ~H"""
-    <form phx-change="sort">
-      <select
-        multiple
-        id={@key}
-        name={"filters[#{@key}][]"}
-        class={@filter.options.select_classes}
-        size="4"
-      >
-        <%= for option <- @filter.options.options do %>
-          <option value={option.value} selected={option.value in @filter.options.selected}>
-            {option.label}
-          </option>
-        <% end %>
-      </select>
-      
-      <div class="mt-2 flex gap-2">
-        <button
-          type="button"
-          onclick={"document.getElementById('#{@key}').selectedIndex = -1; document.getElementById('#{@key}').form.requestSubmit()"}
-          class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          name={"filters[#{@key}][]"}
+          class={@filter.options.select_classes}
+          size={@filter.options.size}
         >
-          Clear selection
-        </button>
-      </div>
-    </form>
+          <option value="" disabled class="text-gray-500">
+            {@filter.options.prompt}
+          </option>
+          <%= for option <- @filter.options.options do %>
+            <option value={option.value} selected={option.value in @filter.options.selected}>
+              {option.label}
+            </option>
+          <% end %>
+        </select>
+        
+        <div class="mt-2 flex gap-2">
+          <button
+            type="button"
+            onclick={"document.getElementById('#{@key}').selectedIndex = -1; document.getElementById('#{@key}').form.requestSubmit()"}
+            class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            Clear selection
+          </button>
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            <%= if @filter.options.multiple do %>
+              Hold Ctrl/Cmd to select multiple
+            <% end %>
+          </span>
+        </div>
+      </form>
+    </div>
     """
   end
 end

@@ -265,6 +265,7 @@ defmodule LiveTable.LiveViewHelpers do
       end
 
       def handle_event("live_select_change", %{"text" => text, "id" => id}, socket) do
+        # LiveSelect handler for regular Select filters (not MultiSelect)
         options =
           case get_filter(id) do
             %LiveTable.Select{
@@ -275,15 +276,6 @@ defmodule LiveTable.LiveViewHelpers do
             %LiveTable.Select{options: %{options: options, options_source: nil}} ->
               options
               
-            %LiveTable.MultiSelect{
-              options: %{options: options, tags: true}
-            } ->
-              # For MultiSelect with LiveSelect, just return the static options
-              # LiveSelect will handle the filtering on the client side
-              Enum.map(options, fn opt -> 
-                %{label: opt.label, value: opt.value}
-              end)
-              
             _ ->
               []
           end
@@ -291,53 +283,6 @@ defmodule LiveTable.LiveViewHelpers do
         send_update(LiveSelect.Component, id: id, options: options)
 
         {:noreply, socket}
-      end
-
-      def handle_event("multiselect_filter_change", params, socket) do
-        filter_key = Map.get(params, "filter_key")
-        filter_data = Map.get(params, "filter", %{})
-        _target = Map.get(params, "_target", [])
-        
-        # Only process if this is actually a selection change, not just typing
-        # LiveSelect sets _target when the value actually changes
-        if filter_key && (_target == ["filter", filter_key] || _target == []) do
-          # Get the value for this specific filter
-          value = Map.get(filter_data, filter_key) || Map.get(filter_data, String.to_atom(filter_key))
-          
-          # Process the value
-          processed_value = case value do
-            nil -> []
-            "" -> []
-            value when is_binary(value) ->
-              # Try to parse as JSON first (LiveSelect format)
-              case Jason.decode(value) do
-                {:ok, decoded} when is_list(decoded) ->
-                  Enum.map(decoded, fn
-                    %{"value" => v} -> v
-                    v when is_binary(v) -> v
-                  end)
-                _ -> 
-                  # Not JSON, treat as single value
-                  [value]
-              end
-            values when is_list(values) ->
-              # Already a list, just use it
-              Enum.reject(values, &(&1 == "" || is_nil(&1)))
-          end
-          
-          # Build the filters map
-          filters = if processed_value == [] do
-            %{}
-          else
-            %{filter_key => processed_value}
-          end
-          
-          # Call the sort handler with the updated filters
-          handle_event("sort", %{"filters" => filters}, socket)
-        else
-          # Just typing, don't update filters
-          {:noreply, socket}
-        end
       end
 
       def remove_unused_keys(map) when is_map(map) do
