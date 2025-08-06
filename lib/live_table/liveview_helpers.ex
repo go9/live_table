@@ -293,6 +293,36 @@ defmodule LiveTable.LiveViewHelpers do
         {:noreply, socket}
       end
 
+      def handle_event("live_select_multiselect", params, socket) do
+        # Extract the filter key and values from params
+        filter_params = Map.get(params, "filters", %{})
+        
+        # Process each filter
+        processed_filters = 
+          Enum.reduce(filter_params, %{}, fn
+            {key, value}, acc when is_binary(value) ->
+              # LiveSelect sends the value as a JSON string when in tags mode
+              case Jason.decode(value) do
+                {:ok, decoded} when is_list(decoded) ->
+                  # Extract just the values from the list of maps
+                  values = Enum.map(decoded, fn 
+                    %{"value" => v} -> v
+                    v when is_binary(v) -> v
+                  end)
+                  Map.put(acc, key, values)
+                _ ->
+                  Map.put(acc, key, [])
+              end
+            {key, values}, acc when is_list(values) ->
+              Map.put(acc, key, values)
+            _, acc ->
+              acc
+          end)
+        
+        # Now call the regular sort handler with the processed filters
+        handle_event("sort", %{"filters" => processed_filters}, socket)
+      end
+
       def remove_unused_keys(map) when is_map(map) do
         map
         |> Map.reject(fn {key, _value} ->

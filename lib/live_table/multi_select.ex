@@ -83,7 +83,7 @@ defmodule LiveTable.MultiSelect do
   
   defp render_live_select(assigns) do
     ~H"""
-    <div phx-change="sort">
+    <form phx-change="live_select_multiselect">
       <.live_select
         field={Phoenix.Component.to_form(%{})["filters[#{@key}]"]}
         id={@key}
@@ -112,7 +112,7 @@ defmodule LiveTable.MultiSelect do
           <span class="text-xs">×</span>
         </:tag>
       </.live_select>
-    </div>
+    </form>
     """
   end
   
