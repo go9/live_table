@@ -293,34 +293,45 @@ defmodule LiveTable.LiveViewHelpers do
         {:noreply, socket}
       end
 
-      def handle_event("live_select_multiselect", params, socket) do
-        # Extract the filter key and values from params
-        filter_params = Map.get(params, "filters", %{})
+      def handle_event("multiselect_change", params, socket) do
+        filter_key = Map.get(params, "filter_key")
+        filter_data = Map.get(params, "filter", %{})
         
-        # Process each filter
-        processed_filters = 
-          Enum.reduce(filter_params, %{}, fn
-            {key, value}, acc when is_binary(value) ->
-              # LiveSelect sends the value as a JSON string when in tags mode
-              case Jason.decode(value) do
-                {:ok, decoded} when is_list(decoded) ->
-                  # Extract just the values from the list of maps
-                  values = Enum.map(decoded, fn 
-                    %{"value" => v} -> v
-                    v when is_binary(v) -> v
-                  end)
-                  Map.put(acc, key, values)
-                _ ->
-                  Map.put(acc, key, [])
-              end
-            {key, values}, acc when is_list(values) ->
-              Map.put(acc, key, values)
-            _, acc ->
-              acc
-          end)
+        # Get the value for this specific filter
+        value = Map.get(filter_data, filter_key) || Map.get(filter_data, String.to_atom(filter_key))
         
-        # Now call the regular sort handler with the processed filters
-        handle_event("sort", %{"filters" => processed_filters}, socket)
+        # Process the value
+        processed_value = case value do
+          nil -> []
+          "" -> []
+          value when is_binary(value) ->
+            # LiveSelect sends JSON-encoded array in tags mode
+            case Jason.decode(value) do
+              {:ok, decoded} when is_list(decoded) ->
+                Enum.map(decoded, fn
+                  %{"value" => v} -> v
+                  v when is_binary(v) -> v
+                end)
+              _ -> []
+            end
+          values when is_list(values) ->
+            values
+        end
+        
+        # Build the filters map
+        filters = if processed_value == [] do
+          %{}
+        else
+          %{filter_key => processed_value}
+        end
+        
+        # Call the sort handler with the updated filters
+        handle_event("sort", %{"filters" => filters}, socket)
+      end
+      
+      def handle_event("multiselect_submit", params, socket) do
+        # Handle submit the same as change
+        handle_event("multiselect_change", params, socket)
       end
 
       def remove_unused_keys(map) when is_map(map) do

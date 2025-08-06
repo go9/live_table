@@ -82,10 +82,18 @@ defmodule LiveTable.MultiSelect do
   end
   
   defp render_live_select(assigns) do
+    # Create a form with a simple atom key
+    form = Phoenix.Component.to_form(%{}, as: :filter)
+    field = String.to_atom(assigns.key)
+    
+    assigns = assign(assigns, :form, form)
+    assigns = assign(assigns, :field, field)
+    
     ~H"""
-    <form phx-change="live_select_multiselect">
+    <.form for={@form} phx-change="multiselect_change" phx-submit="multiselect_submit">
+      <input type="hidden" name="filter_key" value={@key} />
       <.live_select
-        field={Phoenix.Component.to_form(%{})["filters[#{@key}]"]}
+        field={@form[@field]}
         id={@key}
         placeholder={@filter.options.placeholder || @filter.options.prompt}
         mode={:tags}
@@ -103,6 +111,7 @@ defmodule LiveTable.MultiSelect do
         selected_option_class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
         active_option_class="bg-gray-100 dark:bg-gray-800"
         tag_class={@filter.options.tag_class}
+        debounce={200}
       >
         <:option :let={option}>
           <span class="text-sm">{option.label}</span>
@@ -112,7 +121,7 @@ defmodule LiveTable.MultiSelect do
           <span class="text-xs">×</span>
         </:tag>
       </.live_select>
-    </form>
+    </.form>
     """
   end
   
