@@ -293,45 +293,51 @@ defmodule LiveTable.LiveViewHelpers do
         {:noreply, socket}
       end
 
-      def handle_event("multiselect_change", params, socket) do
+      def handle_event("multiselect_filter_change", params, socket) do
         filter_key = Map.get(params, "filter_key")
         filter_data = Map.get(params, "filter", %{})
+        _target = Map.get(params, "_target", [])
         
-        # Get the value for this specific filter
-        value = Map.get(filter_data, filter_key) || Map.get(filter_data, String.to_atom(filter_key))
-        
-        # Process the value
-        processed_value = case value do
-          nil -> []
-          "" -> []
-          value when is_binary(value) ->
-            # LiveSelect sends JSON-encoded array in tags mode
-            case Jason.decode(value) do
-              {:ok, decoded} when is_list(decoded) ->
-                Enum.map(decoded, fn
-                  %{"value" => v} -> v
-                  v when is_binary(v) -> v
-                end)
-              _ -> []
-            end
-          values when is_list(values) ->
-            values
-        end
-        
-        # Build the filters map
-        filters = if processed_value == [] do
-          %{}
+        # Only process if this is actually a selection change, not just typing
+        # LiveSelect sets _target when the value actually changes
+        if filter_key && (_target == ["filter", filter_key] || _target == []) do
+          # Get the value for this specific filter
+          value = Map.get(filter_data, filter_key) || Map.get(filter_data, String.to_atom(filter_key))
+          
+          # Process the value
+          processed_value = case value do
+            nil -> []
+            "" -> []
+            value when is_binary(value) ->
+              # Try to parse as JSON first (LiveSelect format)
+              case Jason.decode(value) do
+                {:ok, decoded} when is_list(decoded) ->
+                  Enum.map(decoded, fn
+                    %{"value" => v} -> v
+                    v when is_binary(v) -> v
+                  end)
+                _ -> 
+                  # Not JSON, treat as single value
+                  [value]
+              end
+            values when is_list(values) ->
+              # Already a list, just use it
+              Enum.reject(values, &(&1 == "" || is_nil(&1)))
+          end
+          
+          # Build the filters map
+          filters = if processed_value == [] do
+            %{}
+          else
+            %{filter_key => processed_value}
+          end
+          
+          # Call the sort handler with the updated filters
+          handle_event("sort", %{"filters" => filters}, socket)
         else
-          %{filter_key => processed_value}
+          # Just typing, don't update filters
+          {:noreply, socket}
         end
-        
-        # Call the sort handler with the updated filters
-        handle_event("sort", %{"filters" => filters}, socket)
-      end
-      
-      def handle_event("multiselect_submit", params, socket) do
-        # Handle submit the same as change
-        handle_event("multiselect_change", params, socket)
       end
 
       def remove_unused_keys(map) when is_map(map) do

@@ -82,46 +82,32 @@ defmodule LiveTable.MultiSelect do
   end
   
   defp render_live_select(assigns) do
-    # Create a form with a simple atom key
-    form = Phoenix.Component.to_form(%{}, as: :filter)
-    field = String.to_atom(assigns.key)
-    
+    # Create a form for LiveSelect
+    form = Phoenix.Component.to_form(%{@key => @filter.options.selected}, as: :filter)
     assigns = assign(assigns, :form, form)
-    assigns = assign(assigns, :field, field)
+    assigns = assign(assigns, :field, String.to_atom(@key))
     
     ~H"""
-    <.form for={@form} phx-change="multiselect_change" phx-submit="multiselect_submit">
-      <input type="hidden" name="filter_key" value={@key} />
-      <.live_select
-        field={@form[@field]}
-        id={@key}
-        placeholder={@filter.options.placeholder || @filter.options.prompt}
-        mode={:tags}
-        value={Enum.map(@filter.options.selected, fn val ->
-          option = Enum.find(@filter.options.options, fn opt -> opt.value == val end)
-          if option, do: %{label: option.label, value: val}, else: %{label: val, value: val}
-        end)}
-        options={Enum.map(@filter.options.options, fn opt ->
-          %{label: opt.label, value: opt.value}
-        end)}
-        text_input_class={@filter.options.select_classes}
-        text_input_selected_class="bg-gray-50 dark:bg-gray-700"
-        dropdown_class="absolute mt-1 w-full rounded-md bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700"
-        option_class="relative px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-150"
-        selected_option_class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
-        active_option_class="bg-gray-100 dark:bg-gray-800"
-        tag_class={@filter.options.tag_class}
-        debounce={200}
-      >
-        <:option :let={option}>
-          <span class="text-sm">{option.label}</span>
-        </:option>
-        <:tag :let={option}>
-          <span class="mr-1">{option.label}</span>
-          <span class="text-xs">×</span>
-        </:tag>
-      </.live_select>
-    </.form>
+    <div id={"multiselect_wrapper_#{@key}"}>
+      <.form for={@form} phx-change="multiselect_filter_change" phx-submit="multiselect_filter_change">
+        <input type="hidden" name="filter_key" value={@key} />
+        <.live_select
+          field={@form[@field]}
+          id={@key}
+          placeholder={@filter.options.placeholder || @filter.options.prompt}
+          mode={:tags}
+          value={@filter.options.selected}
+          options={@filter.options.options}
+          text_input_class={@filter.options.select_classes}
+          text_input_selected_class="bg-gray-50 dark:bg-gray-700"
+          dropdown_class="absolute z-50 mt-1 w-full rounded-md bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700"
+          option_class="relative px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-150"
+          selected_option_class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
+          active_option_class="bg-gray-100 dark:bg-gray-800"
+          tag_class={@filter.options.tag_class}
+        />
+      </.form>
+    </div>
     """
   end
   
