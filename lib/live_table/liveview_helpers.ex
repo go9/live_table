@@ -276,7 +276,7 @@ defmodule LiveTable.LiveViewHelpers do
               options
               
             %LiveTable.MultiSelect{
-              options: %{options: options, mode: :live_select}
+              options: %{options: options, tags: true}
             } ->
               # For MultiSelect with LiveSelect, just return the static options
               # LiveSelect will handle the filtering on the client side
