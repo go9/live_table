@@ -48,6 +48,13 @@ defmodule LiveTable.LiveViewHelpers do
               filter = %{filter | options: Map.update!(filter.options, :selected, &(&1 ++ id))}
               key = key |> String.to_existing_atom()
               Map.put(acc, key, filter)
+            
+            # Handle MultiSelect filters from URL params
+            {key, %{"selected" => selected}}, acc when is_list(selected) ->
+              filter = %LiveTable.MultiSelect{} = get_filter(key)
+              filter = %{filter | options: Map.put(filter.options, :selected, selected)}
+              key = key |> String.to_existing_atom()
+              Map.put(acc, key, filter)
 
             {key, custom_data}, acc when is_map(custom_data) ->
               filter = get_filter(key)
@@ -267,6 +274,18 @@ defmodule LiveTable.LiveViewHelpers do
 
             %LiveTable.Select{options: %{options: options, options_source: nil}} ->
               options
+              
+            %LiveTable.MultiSelect{
+              options: %{options: options, mode: :live_select}
+            } ->
+              # For MultiSelect with LiveSelect, just return the static options
+              # LiveSelect will handle the filtering on the client side
+              Enum.map(options, fn opt -> 
+                %{label: opt.label, value: opt.value}
+              end)
+              
+            _ ->
+              []
           end
 
         send_update(LiveSelect.Component, id: id, options: options)

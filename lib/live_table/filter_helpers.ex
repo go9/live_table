@@ -39,6 +39,23 @@ defmodule LiveTable.FilterHelpers do
                 true ->
                   acc
               end
+            
+            # Handle MultiSelect filter params (array of selected values)
+            {key, values}, acc when is_list(values) ->
+              case get_filter(key) do
+                %LiveTable.MultiSelect{} ->
+                  # Filter out empty strings
+                  selected = Enum.reject(values, &(&1 == ""))
+                  # Return the key directly if no values selected, otherwise return the map
+                  if selected == [] do
+                    Map.delete(acc, key)
+                  else
+                    Map.put(acc, key, %{selected: selected})
+                  end
+                  
+                _ ->
+                  acc
+              end
 
             {key, custom_data}, acc when is_map(custom_data) ->
               case get_filter(key) do
@@ -84,6 +101,10 @@ defmodule LiveTable.FilterHelpers do
           {k, %LiveTable.Select{options: %{selected: selected}}}, acc ->
             k = k |> to_string
             acc |> Map.merge(%{k => %{id: selected}})
+          
+          {k, %LiveTable.MultiSelect{options: %{selected: selected}}}, acc when selected != [] ->
+            k = k |> to_string
+            acc |> Map.merge(%{k => %{selected: selected}})
 
           {k, %LiveTable.Transformer{options: %{applied_data: applied_data}}}, acc
           when applied_data != %{} ->

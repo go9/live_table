@@ -27,7 +27,7 @@ defmodule LiveTable.LiveResource do
 
       use TableComponent, table_options: TableConfig.get_table_options(table_options())
 
-      alias LiveTable.{Boolean, Select, Range, Custom, Transformer}
+      alias LiveTable.{Boolean, Select, MultiSelect, Range, Custom, Transformer}
 
       @resource_opts unquote(opts)
       @repo Application.compile_env(:live_table, :repo)
